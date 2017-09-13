@@ -1,0 +1,79 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ServerlessXR
+Resources:
+  CognitoUserPool:
+    Type: "AWS::Cognito::UserPool"
+    Properties:
+      UserPoolName: SXRUserPool
+      AutoVerifiedAttributes: ['email']
+  CognitoUserPoolClient:
+    Type: "AWS::Cognito::UserPoolClient"
+    Properties:
+        ClientName: SXRClient
+        GenerateSecret: false
+        UserPoolId: !Ref CognitoUserPool
+  CognitoIdentityPool:
+    Type: "AWS::Cognito::IdentityPool"
+    Properties:
+      IdentityPoolName: SXRIdentityPool
+      CognitoIdentityProviders:
+        -
+          ClientId: !Ref CognitoUserPoolClient
+          ProviderName: !GetAtt CognitoUserPool.ProviderName
+      AllowUnauthenticatedIdentities: false
+  SXRAuthenticatedRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              Federated:
+              - cognito-identity.amazonaws.com
+            Action:
+            - sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                cognito-identity.amazonaws.com:aud:
+                - !Ref CognitoIdentityPool
+              ForAnyValue:StringLike:
+                cognito-identity.amazonaws.com:amr:
+                - "authenticated"
+        Path: "/"
+  RolePolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: authenticatedpolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: "*"
+          Resource: "*"
+      Roles:
+      - !Ref SXRAuthenticatedRole
+
+  AuthenticatedRoleAttach:
+      Type: "AWS::Cognito::IdentityPoolRoleAttachment"
+      Properties:
+        IdentityPoolId: !Ref CognitoIdentityPool
+        Roles:
+          authenticated: !GetAtt SXRAuthenticatedRole.Arn
+
+Outputs:
+  CognitoUserPoolId:
+    Description: Cognito User Pool Id
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolId"
+  CognitoIdentityPoolId:
+    Description: Cognito Identity  Pool Id
+    Value: !Ref CognitoIdentityPool
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoIdentityPoolId"
+  CognitoUserPoolClientId:
+    Description: User Pool Client Id
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub "${AWS::StackName}-CognitoUserPoolClientId"
