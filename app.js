@@ -30,6 +30,10 @@ $(document).ready(function(){
         }
     }
 
+    /**
+     * TODO: replace Ids with values from cloud formation outputs
+     * @type {{identityPoolId: string, userPoolId: string, clientId: string}}
+     */
     const cognitoData = {
 
         identityPoolId: 'us-east-1:XXXXccfe-YYYY-468b-ZZZZ-AAAAnea6AAAA',
